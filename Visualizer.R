@@ -1,4 +1,3 @@
-library(vcd) # mosaic plot
 library(GGally) # correlation heatmap
 library(hexbin) # 2-d density
 library(gpairs) # correlation heatmap
@@ -8,6 +7,8 @@ library(ggplot2) # main visualization library
 library(ggpmisc) # time series peaks and valleys
 library(ggExtra) # marginal plots
 library(viridis) # color scheme
+library(graphics) # mosaic plot
+library(ggridges) # ridgeplot
 library(corrgram) # correlation heatmap
 library(corrplot) # correlation heatmap
 library(reshape2) # correlation heatmap
@@ -160,165 +161,218 @@ bivariate_visualizer <- function(df, col1, col2, theme) {
   theme_set(theme)
   
   # check data type of col
-  var <- df[,col]
-  
-  # if numeric,
-  if (class(var) == 'numeric')
+  var1 <- df[,col1]
+  var2 <- df[,col2]
   
   # numeric vs numeric
-  
-    ## scatterplot
+  if (class(var1) == 'numeric' & class(var2) == 'numeric') {
     
-    # scatterplot with smoothing
-    (gg <- 
+    g <- ggplot(df, aes_string(col1,co2)) 
+    
+    # scatterplot with linear regression
+    
+    vis1 <- 
        g +
-       geom_point() +
+       geom_point(color="blue",
+                  fill="#69b3a2",
+                  shape=21) +
        geom_smooth(method='lm', se=F) +
-       labs(title="Scatterplot"))
-  
-    g +
-      geom_point() +
+       labs(title="Scatterplot with Regression")
+    
+    # scatterplot with loess smoothing
+    
+    vis2 <- 
+      g +
+      geom_point(color="black",
+                 fill="#69b3a2",
+                 shape=22) +
       geom_smooth(method='loess', se=F) +
-      labs(title="Scatterplot")
+      labs(title="Scatterplot with Loess")
     
     ## add marginal rugs
-    gg +
-      geom_rug()
     
+    vis3 <-
+      g +
+      geom_point(color="green",
+                 fill="#69b3a2",
+                 shape=23) +
+      geom_rug(alpha=0.1) + 
+      labs(title='Scatterplot with Marginal Rugs')
     
     ## add marginal histograms
-    ggMarginal(gg, type='histogram', fill='transparent')
+    vis4 <-
+      ggMarginal(vis1, type='histogram', fill='transparent')
     
     ## add marginal boxplots
-    ggMarginal(gg, type='boxplot', fill='transparent')
+    vis5 <-
+      ggMarginal(vis2, type='boxplot', fill='transparent')
     
     ## jitterplot
-    g +
+    vis6 <-
+      g +
       geom_jitter() + 
       labs(title='Jitter Plot')
     
     ## countplot
-    g +
+    vis7 <-
+      g +
       geom_count() + 
       labs(title='Counts Plot')
     
     ## 2-d density plots
-    g +
-      geom_bin2d()
+    vis8 <-
+      g +
+      geom_bin2d() +
+      labs(title='2-D Density Plot')
     
-    g +
-      geom_hex()
+    vis9 <-
+      g +
+      geom_hex() +
+      labs(title='Hex Density Plot')
     
-  
+    return(list(vis1,vis2,vis3,vis4,vis5,vis6,vis7,vis8,vis9))
+  }
   # numeric vs categorical
-  
+  else if ((class(var1) == 'numeric' & class(var2) == 'factor') |
+           (class(var1) == 'factor' & class(var2) == 'numeric')){
+    
+    g <- ggplot(df, aes_string(col1, col2)) +
+      scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+      scale_color_viridis(discrete=TRUE) +
+      theme(legend.position="none",
+            axis.text.x = element_text(angle=45, vjust=0.6))
+    
     ## boxplot
     
-    ggplot(df, aes_string(col1, col2)) +
-      geom_boxplot(fill='cyan') +
+    vis1 <-
+      g +
+      geom_boxplot(aes_string(fill=col1),
+                   varwidth = T, 
+                   alpha=0.5) +
       labs(title='Box Plot')
     
     ## violin plot
     
-    ggplot(df, aes_string(col1, col2)) + 
-      geom_violin(trim=F) +
+    vis2 <-
+      g + 
+      geom_violin(aes_string(fill=col1),
+                  trim=T,
+                  draw_quantiles = c(0.25, 0.5, 0.75)) +
       labs(title='Violin Plot')
     
     ## lollipop
-    ggplot(cty_mpg, aes(x=make, y=mileage)) + 
+    
+    vis3 <-
+      g + 
       geom_point(size=3) + 
-      geom_segment(aes(x=make, 
-                       xend=make, 
-                       y=0, 
-                       yend=mileage)) + 
-      labs(title="Lollipop Chart", 
-           subtitle="Make Vs Avg. Mileage", 
-           caption="source: mpg") + 
-      theme(axis.text.x = element_text(angle=65, vjust=0.6))
+      geom_segment(aes_string(x=col1, 
+                             xend=col1, 
+                             y=0, 
+                             yend=col2)) + 
+      labs(title="Lollipop Chart") 
     
     ## dotplot
-    ggplot(cty_mpg, aes(x=make, y=mileage)) + 
-      geom_point(col="tomato2", size=3) +   # Draw points
-      geom_segment(aes(x=make, 
-                       xend=make, 
-                       y=min(mileage), 
-                       yend=max(mileage)), 
+    
+    vis4 <-
+      g + 
+      geom_point(aes_string(col=col1), size=3) +   
+      geom_segment(aes(x=col1, 
+                       xend=col1, 
+                       y=min(col2), 
+                       yend=max(col2)), 
                    linetype="dashed", 
-                   size=0.1) +   # Draw dashed lines
+                   size=0.1) +  
       labs(title="Dot Plot") +  
       coord_flip()
     
     ## box-violin plot
     
-    ggplot(df, aes_string(col1, col2)) + 
-      geom_violin() +
-      geom_boxplot()
+    vis5 <-
+      g + 
+      geom_violin(aes_string(fill=col1),
+                  trim=T) +
+      geom_boxplot(varwidth = T)
     
     ## box-dot plot
-    ggplot(df, aes_string(col1, col2)) +
-      geom_boxplot() +
+    
+    vis6 <-
+      g +
+      geom_boxplot(varwidth = T) +
       geom_dotplot(binaxis='y',
                    stackdir='center',
                    fill='red') + 
-      labs(title="box and dot plot") + 
-      theme
+      labs(title="box and dot plot")
     
     ## tufte-boxplot
     
-    ggplot(df, aes_string(col1, col2)) + 
-      geom_tufteboxplot() +
+    vis7 <-
+      g + 
+      geom_tufteboxplot(median.type = "line", whisker.type = "point", hoffset = 0) +
       labs(title='Tufte Box Plot')
     
     ## violin-jitterplot
     
-    g + geom_violin() + 
+    vis8 <-
+      g + 
+      geom_violin(aes_string(fill=col1),
+                  trim=T) + 
       geom_jitter()
     
     ## histogram per color
     
-    vis2 <- 
-      ggplot(df, aes_string(col1)) + 
-      geom_histogram(aes_string(fill=col2)) +
+    vis9 <- 
+      ggplot(df, aes_string(col2)) + 
+      geom_histogram(aes_string(fill=col1)) +
       labs(title='Histogram') 
     
     ## density per color
     
-    vis5 <- 
+    vis10 <- 
       ggplot(df, aes_string(col1)) + 
       geom_density(aes_string(fill=col2)) +
       labs(title='Density Plot')
+    
+    ## ridge plot
+    
+    vis11 <-
+      ggplot(df, aes_string(x = col2, y = col1, fill = col1)) +
+      geom_density_ridges() +
+      theme_ridges() + 
+      theme(legend.position = "none")
+    
+    return(list(vis1,vis2,vis3,vis4,vis5,vis6,vis7,vis8,vis9,vis10,vis11))
+  }
   
   # categorical vs categorical
   
+  else if (class(var1) == 'factor' & class(var2) == 'factor') {
+    
     ## jitterplot
     
-    g <- ggplot(df, aes(v1,v2))
-    g + geom_jitter(aes(col=v1))
+    vis1 <-
+      ggplot(df, aes_string(v1,v2)) +
+      geom_jitter(aes(col=v1))
     
     ## column charts
     
-    tbl <- count(df,v1,v2)
-    tbl <- mutate(tbl, v1=reorder(v1,-n,sum),
-                  v2=reorder(v2, -n, sum))
-    ggplot(tbl) +
-      geom_col(aes(x=v1, y=n, fill=v2), position='dodge') +
-      facet_grid(~v3)
-    
-    g <- ggplot(mpg, aes(manufacturer))
-    g + geom_bar(aes(fill=class), width = 0.5) + 
+    vis2 <-
+      ggplot(df, aes_string(col1)) +
+      geom_bar(aes_string(fill=col2), position='dodge', stat='identity') + 
       theme(axis.text.x = element_text(angle=65, vjust=0.6)) +
-      labs(title="Categorywise Bar Chart", 
-           subtitle="Manufacturer of vehicles", 
-           caption="Source: Manufacturers from 'mpg' dataset")
+      labs(title="Categorywise Bar Chart")
     
     ## mosaic plot
     
-    mosaic(~v1+v2+v3, df)
+    vis3 <-
+      mosaic(~var1+var2, main = "Mosaic Plot", shade=T)
     
-    ggplot(df) + 
-      geom_mosaic(aes(x=product(v1,v2), fill=v3),
-                  divider = ddecker()) +
-      theme(axis.text.x = element_text(angle=15, hjust=1))
+    return(list(vis1,vis2,vis3))
+    
+  } else {
+    
+    print('correctly specify your data types as either numeric or factor!')
+    
+  }
 }
 
 
@@ -333,12 +387,18 @@ multivariate_visualizer <- function(df, col1, col2, col3, col4=NULL) {
   # numeric x1 categorical x2
   ## violin plot
   ## boxplot
+  https://stackoverflow.com/questions/42018193/r-tailoring-legend-in-ggplot-boxplot-leaves-two-separate-legends
   ## column chart
   
   # categorical x3
   ## balloon plot
   ## column chart
   ## mosaic plot
+  
+  ggplot(df) + 
+    geom_mosaic(aes(x=product(v1,v2), fill=v3),
+                divider = ddecker()) +
+    theme(axis.text.x = element_text(angle=15, hjust=1))
   ## correspondance analysis
 }
 
@@ -361,7 +421,8 @@ timeseries_visualizer <- function(df, date, var, value, date_format, theme) {
   basic <- g + x_scale + x_ticks + color_scheme + theme
     
   # area chart
-  basic +
+  vis1 <-
+    basic +
     geom_area(aes(color=var, fill=var)) +
     labs(title='Time Series', 
          subtitle='Area Chart',
@@ -369,7 +430,8 @@ timeseries_visualizer <- function(df, date, var, value, date_format, theme) {
          y=col)  
   
   # overlain (different color)
-  basic +
+  vis2< -
+    basic +
     geom_line(color=var) +
     geom_point(shape=21, color='black', fill='#69b3a2') +
     labs(title='Time Series', 
@@ -378,21 +440,29 @@ timeseries_visualizer <- function(df, date, var, value, date_format, theme) {
          y=col)  
     
   ## forecast
-  ggseasonplot
-  ts_plot() # https://cran.r-project.org/web/packages/TSstudio/vignettes/Plotting_Time_Series.html
-  ts_plot(df, type='multiple',
-          title,
-          Xtitle,
-          Ytitle,
-          line.mode,
-          dash)
+  vis3 <-
+    ggseasonplot
+ 
+  # https://cran.r-project.org/web/packages/TSstudio/vignettes/Plotting_Time_Series.html
+  
+  vis4 <-
+    ts_plot(df, type='multiple',
+            title,
+            Xtitle,
+            Ytitle,
+            line.mode,
+            dash)
   
   # faceted
-  basic + 
+  
+  vis5 <-
+    basic + 
     geom_point()
   
   # peaks and valleys
-  ggplot(lynx, as.numeric = FALSE) + geom_line() + 
+  
+  vis6 <-
+    ggplot(lynx, as.numeric = FALSE) + geom_line() + 
     stat_peaks(colour = "red") +
     stat_peaks(geom = "text", colour = "red", 
                vjust = -0.5, x.label.fmt = "%Y") +
@@ -402,7 +472,8 @@ timeseries_visualizer <- function(df, date, var, value, date_format, theme) {
     ylim(-500, 7300)
     
   # smoothed
-  basic + 
+  vis7 <-
+    basic + 
     stat_smooth(color=var, fill=var, method='loess')
     
   # calendar
@@ -411,7 +482,9 @@ timeseries_visualizer <- function(df, date, var, value, date_format, theme) {
   df$yearmonthf <- factor(df$yearmonth)
   df <- ddply(df,.(yearmonthf), transform, monthweek=1+week-min(week))  # compute week number of month
   df <- df[, c("year", "yearmonthf", "monthf", "week", "monthweek", "weekdayf", "VIX.Close")]
-  ggplot(df, aes(monthweek, weekdayf, fill = VIX.Close)) + 
+  
+  vis8 <- 
+    ggplot(df, aes(monthweek, weekdayf, fill = VIX.Close)) + 
     geom_tile(colour = "white") + 
     facet_grid(year~monthf) + 
     scale_fill_gradient(low="red", high="green") +
@@ -420,7 +493,8 @@ timeseries_visualizer <- function(df, date, var, value, date_format, theme) {
          title = "Time-Series Calendar Heatmap", 
          subtitle="Yahoo Closing Price", 
          fill="Close")
-
+  
+  return(list(vis1,vis2,vis3,vis4,vis5,vis6,vis7,vis8))
 
 }
 # http://homepage.divms.uiowa.edu/~luke/classes/STAT4580-2020/timeseries.html
