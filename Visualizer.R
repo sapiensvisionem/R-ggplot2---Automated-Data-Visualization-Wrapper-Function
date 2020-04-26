@@ -5,6 +5,7 @@ library(gpairs) # correlation heatmap
 library(ellipse) # correlation heatmap
 library(ggrepel) # non-overlapping texts
 library(ggplot2) # main visualization library
+library(ggpmisc) # time series peaks and valleys
 library(ggExtra) # marginal plots
 library(viridis) # color scheme
 library(corrgram) # correlation heatmap
@@ -26,6 +27,17 @@ library(RColorBrewer) # color scheme
 # theme_classic()
 # theme_void()
 # theme_ipsum()
+# theme_excel()
+# theme_economist()
+# theme_fivethirtyeight()
+# theme_tufte()
+# theme_gdocs()
+# theme_wsj()
+# theme_calc()
+# theme_hc()
+# theme_article()
+# theme_pubclean()
+# theme_bigstarsr()
 
 univariate_visualizer <- function(df, col, theme) {
   # set the theme
@@ -173,6 +185,7 @@ bivariate_visualizer <- function(df, col1, col2, theme) {
     gg +
       geom_rug()
     
+    
     ## add marginal histograms
     ggMarginal(gg, type='histogram', fill='transparent')
     
@@ -201,23 +214,59 @@ bivariate_visualizer <- function(df, col1, col2, theme) {
   
     ## boxplot
     
-    g <- ggplot(df, aes(v1,v2, fill=v3))
-    g + geom_boxplot(fill=v1) +
+    ggplot(df, aes_string(col1, col2)) +
+      geom_boxplot(fill='cyan') +
       labs(title='Box Plot')
     
     ## violin plot
     
-    g + geom_violin(trim=F) +
+    ggplot(df, aes_string(col1, col2)) + 
+      geom_violin(trim=F) +
       labs(title='Violin Plot')
+    
+    ## lollipop
+    ggplot(cty_mpg, aes(x=make, y=mileage)) + 
+      geom_point(size=3) + 
+      geom_segment(aes(x=make, 
+                       xend=make, 
+                       y=0, 
+                       yend=mileage)) + 
+      labs(title="Lollipop Chart", 
+           subtitle="Make Vs Avg. Mileage", 
+           caption="source: mpg") + 
+      theme(axis.text.x = element_text(angle=65, vjust=0.6))
+    
+    ## dotplot
+    ggplot(cty_mpg, aes(x=make, y=mileage)) + 
+      geom_point(col="tomato2", size=3) +   # Draw points
+      geom_segment(aes(x=make, 
+                       xend=make, 
+                       y=min(mileage), 
+                       yend=max(mileage)), 
+                   linetype="dashed", 
+                   size=0.1) +   # Draw dashed lines
+      labs(title="Dot Plot") +  
+      coord_flip()
     
     ## box-violin plot
     
-    g + geom_violin() +
+    ggplot(df, aes_string(col1, col2)) + 
+      geom_violin() +
       geom_boxplot()
+    
+    ## box-dot plot
+    ggplot(df, aes_string(col1, col2)) +
+      geom_boxplot() +
+      geom_dotplot(binaxis='y',
+                   stackdir='center',
+                   fill='red') + 
+      labs(title="box and dot plot") + 
+      theme
     
     ## tufte-boxplot
     
-    g + geom_tufteboxplot() +
+    ggplot(df, aes_string(col1, col2)) + 
+      geom_tufteboxplot() +
       labs(title='Tufte Box Plot')
     
     ## violin-jitterplot
@@ -228,19 +277,16 @@ bivariate_visualizer <- function(df, col1, col2, theme) {
     ## histogram per color
     
     vis2 <- 
-      ggplot(df, aes_string(col, fill = cut(var, 100))) + 
-      geom_histogram(show.legend = FALSE) +
-      labs(title='Histogram',
-           subtitle=col) +
-      scale_fill_discrete(h = c(180, 360), c = 150, l = 80)
+      ggplot(df, aes_string(col1)) + 
+      geom_histogram(aes_string(fill=col2)) +
+      labs(title='Histogram') 
     
     ## density per color
     
-    vis1 <- 
-      ggplot(df, aes_string(col)) + 
-      geom_density(color='cyan') +
-      labs(title='Density Plot',
-           subtitle=col)
+    vis5 <- 
+      ggplot(df, aes_string(col1)) + 
+      geom_density(aes_string(fill=col2)) +
+      labs(title='Density Plot')
   
   # categorical vs categorical
   
@@ -257,6 +303,13 @@ bivariate_visualizer <- function(df, col1, col2, theme) {
     ggplot(tbl) +
       geom_col(aes(x=v1, y=n, fill=v2), position='dodge') +
       facet_grid(~v3)
+    
+    g <- ggplot(mpg, aes(manufacturer))
+    g + geom_bar(aes(fill=class), width = 0.5) + 
+      theme(axis.text.x = element_text(angle=65, vjust=0.6)) +
+      labs(title="Categorywise Bar Chart", 
+           subtitle="Manufacturer of vehicles", 
+           caption="Source: Manufacturers from 'mpg' dataset")
     
     ## mosaic plot
     
@@ -292,13 +345,85 @@ multivariate_visualizer <- function(df, col1, col2, col3, col4=NULL) {
 
 # need to specify the date column and a vector of columns
 # data needs to be in long format
-timeseries_visualizer <- function(df, date, var) {
-  # overlain
+# also date information needs to be in R's date format. Use lubridate library.
+# ingests three columns: date, variable, and value
+
+# date_format: day, week, month, year
+timeseries_visualizer <- function(df, date, var, value, date_format, theme) {
+  g <- ggplot(df, aes_string(x=date, y=value))
+  date_format <- ifelse(date_format=='year',
+                        '%Y',
+                        ifelse(date_format=='month',
+                               '%M', 'd'))
+  x_scale <- scale_x_date(date_labels = date_format) # date_breaks
+  x_ticks <- theme(axis.text.x=element_text(angle=45, hjust=1)) 
+  color_scheme <- scale_fill_viridis(discrete=T) 
+  basic <- g + x_scale + x_ticks + color_scheme + theme
+    
+  # area chart
+  basic +
+    geom_area(aes(color=var, fill=var)) +
+    labs(title='Time Series', 
+         subtitle='Area Chart',
+         x=paste('Date in', date_format),
+         y=col)  
+  
+  # overlain (different color)
+  basic +
+    geom_line(color=var) +
+    geom_point(shape=21, color='black', fill='#69b3a2') +
+    labs(title='Time Series', 
+         subtitle='Area Chart',
+         x=paste('Date in', date_format),
+         y=col)  
+    
+  ## forecast
+  ggseasonplot
+  ts_plot() # https://cran.r-project.org/web/packages/TSstudio/vignettes/Plotting_Time_Series.html
+  ts_plot(df, type='multiple',
+          title,
+          Xtitle,
+          Ytitle,
+          line.mode,
+          dash)
   
   # faceted
+  basic + 
+    geom_point()
   
+  # peaks and valleys
+  ggplot(lynx, as.numeric = FALSE) + geom_line() + 
+    stat_peaks(colour = "red") +
+    stat_peaks(geom = "text", colour = "red", 
+               vjust = -0.5, x.label.fmt = "%Y") +
+    stat_valleys(colour = "blue") +
+    stat_valleys(geom = "text", colour = "blue", angle = 45,
+                 vjust = 1.5, hjust = 1,  x.label.fmt = "%Y")+
+    ylim(-500, 7300)
+    
   # smoothed
+  basic + 
+    stat_smooth(color=var, fill=var, method='loess')
+    
+  # calendar
+  # Create Month Week
+  df$yearmonth <- as.yearmon(df$date)
+  df$yearmonthf <- factor(df$yearmonth)
+  df <- ddply(df,.(yearmonthf), transform, monthweek=1+week-min(week))  # compute week number of month
+  df <- df[, c("year", "yearmonthf", "monthf", "week", "monthweek", "weekdayf", "VIX.Close")]
+  ggplot(df, aes(monthweek, weekdayf, fill = VIX.Close)) + 
+    geom_tile(colour = "white") + 
+    facet_grid(year~monthf) + 
+    scale_fill_gradient(low="red", high="green") +
+    labs(x="Week of Month",
+         y="",
+         title = "Time-Series Calendar Heatmap", 
+         subtitle="Yahoo Closing Price", 
+         fill="Close")
+
+
 }
+# http://homepage.divms.uiowa.edu/~luke/classes/STAT4580-2020/timeseries.html
 
 
 # Correlation Visualizer only takes in all numeric data
@@ -313,6 +438,14 @@ correlation_visualizer <- function(df) {
   ## corrplot
   vis2 <-
     corrplot(cormat, order="hclust")
+  
+  ## ggcorrplot
+  ggcorrplot(cormat, hc.order=T,
+             type = "lower", 
+             lab = TRUE, 
+             method="circle", 
+             colors = c("tomato2", "white", "springgreen3"),
+             ggtheme=theme)
   
   ## gpairs
   vis3 <-
