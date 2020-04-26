@@ -8,14 +8,14 @@ If...
   b. and it is numeric, the function outputs histogram and density plot.
   
 2. two variables are given,
-  a. and both are numeric, the function outputs scatterplot with loess smoothing, with margin histograms/boxplots, and jitterplot.
-  b. and one is categorical while another is numeric, the function outputs boxplot and violin plot.
+  a. and both are numeric, the function outputs scatterplot with loess smoothing, with margin histograms/boxplots, contour plot, and jitterplot.
+  b. and one is categorical while another is numeric, the function outputs boxplot, lollipop plot, dotplot, violin plot, dot+box plot, box+violin plot, histogram per color, and density per color.
   c. and both are categorical, the function outputs jitterplot, column chart, and mosaic chart. 
   
 3. more than two variables are given (up to four max),
   a. it will add color/size variation to the plots above or use new facets.
   b. perspective plot and contour plot for all numeric case.
 
-4. data is time series, the function outputs line plot. (e.g. US GDP growth)
+4. data is time series, the function outputs line/area plots and heatmap. (e.g. US GDP growth)
 
-5. data is matrix, the function outputs heatmap. (e.g. correlation matrix)
+5. data is matrix, the function outputs heatmap and pairwise graphs. (e.g. correlation matrix)
